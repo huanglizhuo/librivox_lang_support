@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: librivox_db
+    environment:
+      POSTGRES_DB: librivox
+      POSTGRES_USER: librivox_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-librivox_pass_123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U librivox_user -d librivox"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: librivox_api
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: librivox
+      DB_USER: librivox_user
+      DB_PASSWORD: ${DB_PASSWORD:-librivox_pass_123}
+      PORT: 3000
+      ENABLE_SYNC_CRON: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
