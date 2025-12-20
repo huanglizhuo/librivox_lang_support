@@ -10,42 +10,6 @@ import { Section } from '../models/Section';
 import logger from '../utils/logger';
 
 export class SyncService {
-  private checkFieldLengths(book: LibriVoxBook): void {
-    const bookId = parseLibriVoxId(book.id);
-    const warnings: string[] = [];
-
-    // Only check fields that still have VARCHAR limits
-    // Most fields are now TEXT (unlimited) after migration
-    const checks = [
-      { field: 'totaltime', value: book.totaltime, limit: 50 },
-      { field: 'language', value: book.language, limit: 100 },
-      { field: 'copyright_year', value: book.copyright_year, limit: 10 },
-    ];
-
-    for (const check of checks) {
-      if (check.value && check.value.length > check.limit) {
-        warnings.push(`${check.field}: ${check.value.length} chars (limit: ${check.limit})`);
-      }
-    }
-
-    // Check section language field (still VARCHAR(100))
-    if (book.sections) {
-      book.sections.forEach((section, idx) => {
-        if (section.language && section.language.length > 100) {
-          warnings.push(`section[${idx}].language: ${section.language.length} chars (limit: 100)`);
-        }
-      });
-    }
-
-    if (warnings.length > 0) {
-      logger.warn('Book has fields exceeding VARCHAR limits', {
-        bookId,
-        title: book.title,
-        warnings,
-      });
-    }
-  }
-
   async syncBook(book: LibriVoxBook, client: PoolClient): Promise<void> {
     const bookId = parseLibriVoxId(book.id);
     if (!bookId) {
@@ -53,8 +17,7 @@ export class SyncService {
       return;
     }
 
-    // Check field lengths before attempting sync
-    this.checkFieldLengths(book);
+    // Note: All text fields are now TEXT (unlimited) - no length validation needed
 
     try {
       // Step 1: Upsert independent entities in parallel

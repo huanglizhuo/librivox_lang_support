@@ -37,22 +37,32 @@ Changed most VARCHAR fields to TEXT to prevent truncation errors with external L
 - `listen_url` VARCHAR(500) → TEXT
 - `file_name` VARCHAR(500) → TEXT
 
-### Fields Kept as VARCHAR (for validation)
+### Additional Fields Changed to TEXT (Migration 003)
 
-- `audiobooks.language` VARCHAR(100) ✓
-- `audiobooks.totaltime` VARCHAR(50) ✓
-- `audiobooks.copyright_year` VARCHAR(10) ✓
-- `sections.language` VARCHAR(100) ✓
-- `authors.dob` VARCHAR(10) ✓
-- `authors.dod` VARCHAR(10) ✓
-- `translators.dob` VARCHAR(10) ✓
-- `translators.dod` VARCHAR(10) ✓
+**Audiobooks Table:**
+- `language` VARCHAR(100) → TEXT
+- `totaltime` VARCHAR(50) → TEXT
+- `copyright_year` VARCHAR(10) → TEXT
+
+**Authors Table:**
+- `dob` VARCHAR(10) → TEXT
+- `dod` VARCHAR(10) → TEXT
+
+**Translators Table:**
+- `dob` VARCHAR(10) → TEXT
+- `dod` VARCHAR(10) → TEXT
+
+**Sections Table:**
+- `language` VARCHAR(100) → TEXT
+
+**Result**: ALL text-based fields are now TEXT - zero VARCHAR constraints!
 
 ## Files Updated
 
-1. ✅ `src/db/migrations/002_change_to_text.sql` - New migration script
-2. ✅ `src/db/migrations/001_initial_schema.sql` - Updated for future deployments
-3. ✅ `src/services/sync.service.ts` - Simplified validation (only checks remaining VARCHAR fields)
+1. ✅ `src/db/migrations/002_change_to_text.sql` - First migration (URLs, names, titles)
+2. ✅ `src/db/migrations/003_all_to_text.sql` - Final migration (ALL remaining VARCHAR fields)
+3. ✅ `src/db/migrations/001_initial_schema.sql` - Updated for future deployments (all TEXT)
+4. ✅ `src/services/sync.service.ts` - Removed field length validation entirely
 
 ## Why TEXT?
 
@@ -65,11 +75,14 @@ In PostgreSQL:
 
 ## How to Apply Migration
 
-### Option 1: Run Migration Script (No Data Loss)
+### Option 1: Run Migration Scripts (No Data Loss)
 
 ```bash
-# Apply all ALTER TABLE statements
+# Apply migration 002 (if not already done)
 docker-compose exec -T postgres psql -U librivox_user -d librivox < src/db/migrations/002_change_to_text.sql
+
+# Apply migration 003 (converts remaining VARCHAR fields)
+docker-compose exec -T postgres psql -U librivox_user -d librivox < src/db/migrations/003_all_to_text.sql
 ```
 
 ### Option 2: Run Statements Individually

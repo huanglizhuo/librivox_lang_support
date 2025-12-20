@@ -11,8 +11,8 @@ CREATE TABLE audiobooks (
   title TEXT NOT NULL,
   description TEXT,
   url_text_source TEXT,
-  language VARCHAR(100) NOT NULL,
-  copyright_year VARCHAR(10),
+  language TEXT NOT NULL,
+  copyright_year TEXT,
   num_sections INTEGER,
   url_rss TEXT,
   url_zip_file TEXT,
@@ -20,7 +20,7 @@ CREATE TABLE audiobooks (
   url_librivox TEXT,
   url_other TEXT,
   url_iarchive TEXT,
-  totaltime VARCHAR(50),
+  totaltime TEXT,
   totaltimesecs INTEGER,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
@@ -31,8 +31,8 @@ CREATE TABLE authors (
   id INTEGER PRIMARY KEY,
   first_name TEXT,
   last_name TEXT,
-  dob VARCHAR(10),
-  dod VARCHAR(10),
+  dob TEXT,
+  dod TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -55,8 +55,8 @@ CREATE TABLE translators (
   id INTEGER PRIMARY KEY,
   first_name TEXT,
   last_name TEXT,
-  dob VARCHAR(10),
-  dod VARCHAR(10),
+  dob TEXT,
+  dod TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -95,7 +95,7 @@ CREATE TABLE sections (
   section_number INTEGER NOT NULL,
   title TEXT,
   listen_url TEXT,
-  language VARCHAR(100),
+  language TEXT,
   playtime INTEGER,
   file_name TEXT,
   created_at TIMESTAMP DEFAULT NOW()

@@ -33,12 +33,22 @@ export class LibriVoxService {
 
     logger.info('Fetching from LibriVox API', { url, offset: params.offset });
 
-    const data = await fetchWithRetry<LibriVoxApiResponse>(url);
+    try {
+      const data = await fetchWithRetry<LibriVoxApiResponse>(url);
 
-    // Rate limiting: wait before next request
-    await sleep(this.rateLimitMs);
+      // Rate limiting: wait before next request
+      await sleep(this.rateLimitMs);
 
-    return data;
+      return data;
+    } catch (error: any) {
+      // Handle 404 as "no more data" rather than an error
+      // LibriVox API returns 404 when offset exceeds available books
+      if (error.response && error.response.status === 404) {
+        logger.info('Reached end of available books (404)', { offset: params.offset });
+        return { books: [] };
+      }
+      throw error;
+    }
   }
 
   async testConnection(): Promise<boolean> {
