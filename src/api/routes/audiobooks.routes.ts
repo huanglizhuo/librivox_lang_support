@@ -5,6 +5,7 @@ const router = Router();
 const controller = new AudiobooksController();
 
 router.get('/', controller.list);
+router.get('/stats/languages', controller.getLanguageStats);
 router.get('/:id', controller.getById);
 
 export default router;

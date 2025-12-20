@@ -112,4 +112,10 @@ export class AudiobookService {
       sections: sectionsResult.rows,
     };
   }
+  async getLanguageStats() {
+    const result = await pool.query(
+      'SELECT language, COUNT(*)::int as count FROM audiobooks GROUP BY language ORDER BY count DESC'
+    );
+    return result.rows;
+  }
 }

@@ -51,4 +51,13 @@ export class AudiobooksController {
       next(err);
     }
   };
+
+  getLanguageStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const stats = await this.audiobookService.getLanguageStats();
+      res.json(stats);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
