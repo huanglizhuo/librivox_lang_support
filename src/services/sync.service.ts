@@ -10,12 +10,51 @@ import { Section } from '../models/Section';
 import logger from '../utils/logger';
 
 export class SyncService {
+  private checkFieldLengths(book: LibriVoxBook): void {
+    const bookId = parseLibriVoxId(book.id);
+    const warnings: string[] = [];
+
+    // Only check fields that still have VARCHAR limits
+    // Most fields are now TEXT (unlimited) after migration
+    const checks = [
+      { field: 'totaltime', value: book.totaltime, limit: 50 },
+      { field: 'language', value: book.language, limit: 100 },
+      { field: 'copyright_year', value: book.copyright_year, limit: 10 },
+    ];
+
+    for (const check of checks) {
+      if (check.value && check.value.length > check.limit) {
+        warnings.push(`${check.field}: ${check.value.length} chars (limit: ${check.limit})`);
+      }
+    }
+
+    // Check section language field (still VARCHAR(100))
+    if (book.sections) {
+      book.sections.forEach((section, idx) => {
+        if (section.language && section.language.length > 100) {
+          warnings.push(`section[${idx}].language: ${section.language.length} chars (limit: 100)`);
+        }
+      });
+    }
+
+    if (warnings.length > 0) {
+      logger.warn('Book has fields exceeding VARCHAR limits', {
+        bookId,
+        title: book.title,
+        warnings,
+      });
+    }
+  }
+
   async syncBook(book: LibriVoxBook, client: PoolClient): Promise<void> {
     const bookId = parseLibriVoxId(book.id);
     if (!bookId) {
       logger.warn('Skipping book with invalid ID', { book });
       return;
     }
+
+    // Check field lengths before attempting sync
+    this.checkFieldLengths(book);
 
     try {
       // Step 1: Upsert independent entities in parallel
@@ -42,8 +81,26 @@ export class SyncService {
       }
 
       logger.debug('Successfully synced book', { bookId, title: book.title });
-    } catch (error) {
-      logger.error('Failed to sync book', { bookId, error });
+    } catch (error: any) {
+      // Enhanced error logging for debugging
+      logger.error('Failed to sync book - detailed info', {
+        bookId,
+        title: book.title,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetail: error.detail,
+        errorHint: error.hint,
+        errorPosition: error.position,
+        errorWhere: error.where,
+        bookData: {
+          id: book.id,
+          title: book.title?.substring(0, 100),
+          language: book.language,
+          num_sections: book.num_sections,
+          authors_count: book.authors?.length || 0,
+          sections_count: book.sections?.length || 0,
+        }
+      });
       throw error;
     }
   }

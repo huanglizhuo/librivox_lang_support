@@ -8,18 +8,18 @@
 -- Main audiobooks table
 CREATE TABLE audiobooks (
   id INTEGER PRIMARY KEY,
-  title VARCHAR(500) NOT NULL,
+  title TEXT NOT NULL,
   description TEXT,
-  url_text_source VARCHAR(500),
+  url_text_source TEXT,
   language VARCHAR(100) NOT NULL,
   copyright_year VARCHAR(10),
   num_sections INTEGER,
-  url_rss VARCHAR(500),
-  url_zip_file VARCHAR(500),
-  url_project VARCHAR(500),
-  url_librivox VARCHAR(500),
-  url_other VARCHAR(500),
-  url_iarchive VARCHAR(500),
+  url_rss TEXT,
+  url_zip_file TEXT,
+  url_project TEXT,
+  url_librivox TEXT,
+  url_other TEXT,
+  url_iarchive TEXT,
   totaltime VARCHAR(50),
   totaltimesecs INTEGER,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -29,8 +29,8 @@ CREATE TABLE audiobooks (
 -- Authors table
 CREATE TABLE authors (
   id INTEGER PRIMARY KEY,
-  first_name VARCHAR(200),
-  last_name VARCHAR(200),
+  first_name TEXT,
+  last_name TEXT,
   dob VARCHAR(10),
   dod VARCHAR(10),
   created_at TIMESTAMP DEFAULT NOW()
@@ -39,22 +39,22 @@ CREATE TABLE authors (
 -- Readers table
 CREATE TABLE readers (
   id INTEGER PRIMARY KEY,
-  display_name VARCHAR(200),
+  display_name TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Genres table
 CREATE TABLE genres (
   id INTEGER PRIMARY KEY,
-  name VARCHAR(200) NOT NULL,
+  name TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Translators table
 CREATE TABLE translators (
   id INTEGER PRIMARY KEY,
-  first_name VARCHAR(200),
-  last_name VARCHAR(200),
+  first_name TEXT,
+  last_name TEXT,
   dob VARCHAR(10),
   dod VARCHAR(10),
   created_at TIMESTAMP DEFAULT NOW()
@@ -93,11 +93,11 @@ CREATE TABLE sections (
   id BIGINT PRIMARY KEY,
   audiobook_id INTEGER REFERENCES audiobooks(id) ON DELETE CASCADE,
   section_number INTEGER NOT NULL,
-  title VARCHAR(500),
-  listen_url VARCHAR(500),
+  title TEXT,
+  listen_url TEXT,
   language VARCHAR(100),
   playtime INTEGER,
-  file_name VARCHAR(500),
+  file_name TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 

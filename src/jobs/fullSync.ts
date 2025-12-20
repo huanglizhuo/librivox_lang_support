@@ -42,7 +42,7 @@ export class FullSyncJob {
 
         try {
           await this.syncService.syncBatch(response.books);
-          // todo remove below beak for debug
+          // todo remove below break for debug
           // if (totalSynced >= 100) {
           //   break;
           // }
