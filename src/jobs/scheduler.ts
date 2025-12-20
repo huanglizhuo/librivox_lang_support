@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { IncrementalSyncJob } from './incrementalSync';
+import { FullSyncJob } from './fullSync';
 import logger from '../utils/logger';
 
 export class SyncScheduler {
@@ -20,15 +21,17 @@ export class SyncScheduler {
 
     cron.schedule('0 2 * * *', async () => {
       if (this.isRunning) {
-        logger.warn('Incremental sync already running, skipping');
+        logger.warn('Sync already running, skipping');
         return;
       }
 
       this.isRunning = true;
 
       try {
-        logger.info('Cron triggered incremental sync');
-        await this.incrementalSyncJob.run();
+        logger.info('Cron triggered full sync');
+        // Daily full sync to ensure data consistency
+        const fullSyncJob = new FullSyncJob();
+        await fullSyncJob.run();
       } catch (error) {
         logger.error('Cron sync failed', { error });
       } finally {
@@ -36,7 +39,7 @@ export class SyncScheduler {
       }
     });
 
-    logger.info('Cron scheduler started (daily at 2 AM UTC)');
+    logger.info('Cron scheduler started (daily full sync at 2 AM UTC)');
   }
 
   stop(): void {

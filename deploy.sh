@@ -148,15 +148,19 @@ if [ "$BOOK_COUNT" -eq "0" ] || [ "$FORCE_FULL_SYNC" = "true" ]; then
         log_warning "TESTING MODE: Will sync only first $FULL_SYNC_LIMIT books"
     fi
 
-    # Run sync in background and show progress
-    node dist/scripts/run-sync.js --type=full &
-    SYNC_PID=$!
+    # Run sync in background using Docker (detached)
+    
+    # Clean up any previous sync container
+    docker rm -f librivox_initial_sync > /dev/null 2>&1 || true
 
-    log_info "Sync running in background (PID: $SYNC_PID)"
-    log_info "Monitoring progress (Ctrl+C to stop monitoring, sync will continue)..."
+    log_info "Starting sync in Docker container..."
+    SYNC_CONTAINER_ID=$(docker-compose run -d --name librivox_initial_sync api node dist/scripts/run-sync.js --type=full)
+    
+    log_info "Sync running in container (ID: ${SYNC_CONTAINER_ID:0:12})"
+    log_info "Monitoring progress (Ctrl+C to stop monitoring, sync will continue in background)..."
 
     # Monitor progress
-    while kill -0 $SYNC_PID 2> /dev/null; do
+    while [ "$(docker inspect -f '{{.State.Running}}' $SYNC_CONTAINER_ID 2>/dev/null)" = "true" ]; do
         sleep 10
         CURRENT_COUNT=$(docker-compose exec -T postgres psql -U librivox_user -d librivox -t -c "SELECT COUNT(*) FROM audiobooks;" | xargs)
         SYNC_STATUS=$(docker-compose exec -T postgres psql -U librivox_user -d librivox -t -c "SELECT status FROM sync_status WHERE sync_type = 'full' ORDER BY started_at DESC LIMIT 1;" | xargs)
@@ -164,16 +168,19 @@ if [ "$BOOK_COUNT" -eq "0" ] || [ "$FORCE_FULL_SYNC" = "true" ]; then
     done
     echo ""
 
-    # Check if sync completed successfully
-    wait $SYNC_PID
-    SYNC_EXIT_CODE=$?
-
-    if [ $SYNC_EXIT_CODE -eq 0 ]; then
+    # Check if sync completed successfully by inspecting exit code
+    SYNC_EXIT_CODE=$(docker inspect -f '{{.State.ExitCode}}' $SYNC_CONTAINER_ID)
+    
+    if [ "$SYNC_EXIT_CODE" -eq "0" ]; then
         FINAL_COUNT=$(docker-compose exec -T postgres psql -U librivox_user -d librivox -t -c "SELECT COUNT(*) FROM audiobooks;" | xargs)
         log_success "Initial sync completed! Total books: $FINAL_COUNT"
+        
+        # Clean up container on success
+        docker rm $SYNC_CONTAINER_ID > /dev/null
     else
         log_error "Initial sync failed with exit code $SYNC_EXIT_CODE"
-        log_error "Check logs/error.log for details"
+        log_error "To investigate, check logs: docker logs librivox_initial_sync"
+        log_error "Container 'librivox_initial_sync' has been kept for debugging."
         exit 1
     fi
 else
