@@ -1,10 +1,11 @@
 import express from 'express';
-import audiobooksRoutes from './api/routes/audiobooks.routes';
-import healthRoutes from './api/routes/health.routes';
+import { Pool } from 'pg';
+import createAudiobooksRouter from './api/routes/audiobooks.routes';
+import { createHealthRouter } from './api/routes/health.routes';
 import { errorHandler } from './api/middlewares/errorHandler';
 import logger from './utils/logger';
 
-export function createServer() {
+export function createServer(pool: Pool) {
   const app = express();
 
   app.use(express.json());
@@ -18,8 +19,8 @@ export function createServer() {
     next();
   });
 
-  app.use('/audiobooks', audiobooksRoutes);
-  app.use('/health', healthRoutes);
+  app.use('/audiobooks', createAudiobooksRouter(pool));
+  app.use('/health', createHealthRouter(pool));
 
   app.use(errorHandler);
 

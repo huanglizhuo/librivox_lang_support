@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Pool } from 'pg';
 import { AudiobookService } from '../../services/audiobook.service';
 import Joi from 'joi';
 
@@ -13,8 +14,8 @@ const listSchema = Joi.object({
 export class AudiobooksController {
   private audiobookService: AudiobookService;
 
-  constructor() {
-    this.audiobookService = new AudiobookService();
+  constructor(pool: Pool) {
+    this.audiobookService = new AudiobookService(pool);
   }
 
   list = async (req: Request, res: Response, next: NextFunction) => {

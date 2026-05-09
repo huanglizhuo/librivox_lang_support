@@ -1,23 +1,18 @@
 import { LibriVoxApiResponse } from '../types/librivox.types';
 import { fetchWithRetry, sleep } from '../utils/retry';
+import { LibriVoxApiError } from '../utils/errors';
+import { config } from '../config';
 import logger from '../utils/logger';
 
 export class LibriVoxService {
   private readonly baseUrl = 'https://librivox.org/api/feed/audiobooks/';
-  private readonly batchSize: number;
-  private readonly rateLimitMs: number;
-
-  constructor() {
-    this.batchSize = parseInt(process.env.SYNC_BATCH_SIZE || '100');
-    this.rateLimitMs = parseInt(process.env.SYNC_RATE_LIMIT_MS || '1000');
-  }
 
   async fetchBooks(params: {
     offset: number;
     limit?: number;
     since?: number;
   }): Promise<LibriVoxApiResponse> {
-    const limit = params.limit || this.batchSize;
+    const limit = params.limit ?? config.sync.batchSize;
     const queryParams = new URLSearchParams({
       format: 'json',
       extended: '1',
@@ -35,19 +30,17 @@ export class LibriVoxService {
 
     try {
       const data = await fetchWithRetry<LibriVoxApiResponse>(url);
-
-      // Rate limiting: wait before next request
-      await sleep(this.rateLimitMs);
-
+      await sleep(config.sync.rateLimitMs);
       return data;
     } catch (error: any) {
-      // Handle 404 as "no more data" rather than an error
-      // LibriVox API returns 404 when offset exceeds available books
-      if (error.response && error.response.status === 404) {
+      if (error.response?.status === 404) {
         logger.info('Reached end of available books (404)', { offset: params.offset });
         return { books: [] };
       }
-      throw error;
+      throw new LibriVoxApiError(
+        `LibriVox API request failed: ${(error as Error).message}`,
+        error.response?.status,
+      );
     }
   }
 

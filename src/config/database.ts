@@ -1,14 +1,15 @@
 import { Pool, PoolClient } from 'pg';
+import { config } from './index';
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'librivox',
-  user: process.env.DB_USER || 'librivox_user',
-  password: process.env.DB_PASSWORD,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  host: config.db.host,
+  port: config.db.port,
+  database: config.db.name,
+  user: config.db.user,
+  password: config.db.password,
+  max: config.db.maxConnections,
+  idleTimeoutMillis: config.db.idleTimeoutMs,
+  connectionTimeoutMillis: config.db.connectionTimeoutMs,
 });
 
 pool.on('error', (err) => {

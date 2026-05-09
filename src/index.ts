@@ -3,19 +3,18 @@ dotenv.config();
 
 import { createServer } from './server';
 import { SyncScheduler } from './jobs/scheduler';
+import { config } from './config';
 import logger from './utils/logger';
 import { pool } from './config/database';
-
-const PORT = process.env.PORT || 3000;
 
 async function main() {
   try {
     await pool.query('SELECT 1');
     logger.info('Database connected');
 
-    const app = createServer();
-    app.listen(PORT, () => {
-      logger.info(`API server listening on port ${PORT}`);
+    const app = createServer(pool);
+    app.listen(config.api.port, () => {
+      logger.info(`API server listening on port ${config.api.port}`);
     });
 
     const scheduler = new SyncScheduler();

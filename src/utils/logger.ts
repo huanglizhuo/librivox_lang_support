@@ -1,15 +1,13 @@
 import winston from 'winston';
 import path from 'path';
-
-const logLevel = process.env.LOG_LEVEL || 'info';
-const nodeEnv = process.env.NODE_ENV || 'development';
+import { config } from '../config';
 
 const logger = winston.createLogger({
-  level: logLevel,
+  level: config.log.level,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
-    nodeEnv === 'production'
+    config.log.env === 'production'
       ? winston.format.json()
       : winston.format.simple()
   ),
@@ -22,7 +20,7 @@ const logger = winston.createLogger({
       filename: path.join('logs', 'combined.log'),
     }),
     new winston.transports.Console({
-      format: nodeEnv === 'development'
+      format: config.log.env === 'development'
         ? winston.format.combine(
             winston.format.colorize(),
             winston.format.simple()

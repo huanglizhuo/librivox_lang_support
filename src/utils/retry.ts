@@ -1,8 +1,37 @@
 import axios, { AxiosError } from 'axios';
+import { config } from '../config';
 import logger from './logger';
 
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+  } = {}
+): Promise<T> {
+  const maxRetries = options.maxRetries ?? config.sync.maxRetries;
+  const baseDelayMs = options.baseDelayMs ?? config.sync.retryBaseDelayMs;
+  const maxDelayMs = options.maxDelayMs ?? config.sync.retryMaxDelayMs;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries - 1) {
+        const delay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
+        logger.warn(`Attempt ${attempt + 1}/${maxRetries} failed, retrying in ${delay}ms`);
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastError;
 }
 
 export async function fetchWithRetry<T>(
@@ -15,10 +44,10 @@ export async function fetchWithRetry<T>(
   } = {}
 ): Promise<T> {
   const {
-    maxRetries = 3,
-    initialDelay = 5000,
-    maxDelay = 30000,
-    timeout = 30000
+    maxRetries = config.sync.maxRetries,
+    initialDelay = config.sync.retryBaseDelayMs,
+    maxDelay = config.sync.retryMaxDelayMs,
+    timeout = 30000,
   } = options;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -37,7 +66,6 @@ export async function fetchWithRetry<T>(
         throw error;
       }
 
-      // Determine if error is retryable
       const axiosError = error as AxiosError;
       const isRetryable =
         axiosError.code === 'ECONNRESET' ||
@@ -49,11 +77,10 @@ export async function fetchWithRetry<T>(
         throw error;
       }
 
-      // Exponential backoff with max delay cap
       const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay);
       logger.warn(`Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`, {
         url,
-        error: axiosError.message
+        error: axiosError.message,
       });
 
       await sleep(delay);

@@ -1,99 +1,59 @@
 import { SyncService } from '../services/sync.service';
 import { LibriVoxService } from '../services/librivox.service';
 import { SyncStatus } from '../models/SyncStatus';
-import { sleep } from '../utils/retry';
+import { withRetry } from '../utils/retry';
+import { SyncError } from '../utils/errors';
+import { config } from '../config';
 import logger from '../utils/logger';
 
 export class FullSyncJob {
-  private syncService: SyncService;
-  private librivoxService: LibriVoxService;
-  private readonly batchSize = 100;
-
-  constructor() {
-    this.syncService = new SyncService();
-    this.librivoxService = new LibriVoxService();
-  }
+  private syncService = new SyncService();
+  private librivoxService = new LibriVoxService();
 
   async run(resumeFromOffset?: number): Promise<void> {
     logger.info('Starting full sync job', { resumeFromOffset });
 
-    const syncId = await SyncStatus.create('full', {
-      resumedFrom: resumeFromOffset
-    });
+    const syncId = await SyncStatus.create('full', { resumedFrom: resumeFromOffset });
 
-    let offset = resumeFromOffset || 0;
+    let offset = resumeFromOffset ?? 0;
     let totalSynced = 0;
-    let hasMore = true;
 
     try {
-      while (hasMore) {
-        logger.info('Fetching batch', { offset, batchSize: this.batchSize });
+      while (true) {
+        logger.info('Fetching batch', { offset, batchSize: config.sync.batchSize });
 
         const response = await this.librivoxService.fetchBooks({
           offset,
-          limit: this.batchSize,
+          limit: config.sync.batchSize,
         });
 
         if (!response.books || response.books.length === 0) {
           logger.info('No more books to sync');
-          hasMore = false;
           break;
         }
 
-        try {
-          await this.syncService.syncBatch(response.books);
-          // todo remove below break for debug
-          // if (totalSynced >= 100) {
-          //   break;
-          // }
-          totalSynced += response.books.length;
-          offset += this.batchSize;
+        await withRetry(() => this.syncService.syncBatch(response.books));
 
-          await SyncStatus.updateProgress(syncId, totalSynced, offset);
+        totalSynced += response.books.length;
+        offset += config.sync.batchSize;
 
-          logger.info('Batch synced successfully', {
-            batchSize: response.books.length,
-            totalSynced,
-            nextOffset: offset
-          });
+        await SyncStatus.updateProgress(syncId, totalSynced, offset);
+        logger.info('Batch synced', { batchSize: response.books.length, totalSynced, nextOffset: offset });
 
-        } catch (batchError) {
-          logger.error('Batch sync failed, will retry', {
-            offset,
-            error: batchError
-          });
-
-          let retries = 0;
-          while (retries < 3) {
-            try {
-              await sleep(5000 * (retries + 1));
-              await this.syncService.syncBatch(response.books);
-              logger.info('Batch retry succeeded', { offset, retries });
-              totalSynced += response.books.length;
-              offset += this.batchSize;
-              break;
-            } catch (retryError) {
-              retries++;
-              if (retries === 3) {
-                throw new Error(`Batch failed after 3 retries: ${(retryError as Error).message}`);
-              }
-            }
-          }
-        }
-
-        if (offset > 100000) {
+        if (offset > config.sync.safetyOffsetLimit) {
           logger.warn('Safety limit reached, stopping sync');
           break;
         }
       }
 
       await SyncStatus.complete(syncId, totalSynced);
-      logger.info('Full sync completed successfully', { totalSynced });
+      logger.info('Full sync completed', { totalSynced });
 
     } catch (error) {
-      await SyncStatus.fail(syncId, (error as Error).message);
+      const message = (error as Error).message;
+      await SyncStatus.fail(syncId, message);
       logger.error('Full sync failed', { error, offset, totalSynced });
-      throw error;
+      throw new SyncError(`Full sync failed at offset ${offset}: ${message}`, error);
     }
   }
 }

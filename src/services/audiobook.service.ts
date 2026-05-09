@@ -1,4 +1,5 @@
-import { pool } from '../config/database';
+import { Pool } from 'pg';
+import { config } from '../config';
 
 export interface AudiobookListParams {
   language: string;
@@ -9,20 +10,22 @@ export interface AudiobookListParams {
 }
 
 export class AudiobookService {
+  constructor(private pool: Pool) {}
+
   async list(params: AudiobookListParams) {
     const page = params.page || 1;
-    const limit = Math.min(params.limit || 20, 100);
+    const limit = Math.min(params.limit || 20, config.api.maxPageSize);
     const offset = (page - 1) * limit;
     const sort = params.sort || 'title';
     const order = params.order || 'asc';
 
-    const countResult = await pool.query(
+    const countResult = await this.pool.query(
       'SELECT COUNT(*) as total FROM audiobooks WHERE language = $1',
       [params.language]
     );
     const total = parseInt(countResult.rows[0].total);
 
-    const booksResult = await pool.query(
+    const booksResult = await this.pool.query(
       `SELECT
         a.*,
         json_agg(
@@ -54,7 +57,7 @@ export class AudiobookService {
   }
 
   async getById(id: number) {
-    const bookResult = await pool.query(
+    const bookResult = await this.pool.query(
       'SELECT * FROM audiobooks WHERE id = $1',
       [id]
     );
@@ -65,44 +68,43 @@ export class AudiobookService {
 
     const book = bookResult.rows[0];
 
-    const authorsResult = await pool.query(
-      `SELECT a.* FROM authors a
-       JOIN audiobook_authors aa ON a.id = aa.author_id
-       WHERE aa.audiobook_id = $1`,
-      [id]
-    );
-
-    const genresResult = await pool.query(
-      `SELECT g.* FROM genres g
-       JOIN audiobook_genres ag ON g.id = ag.genre_id
-       WHERE ag.audiobook_id = $1`,
-      [id]
-    );
-
-    const translatorsResult = await pool.query(
-      `SELECT t.* FROM translators t
-       JOIN audiobook_translators at ON t.id = at.translator_id
-       WHERE at.audiobook_id = $1`,
-      [id]
-    );
-
-    const sectionsResult = await pool.query(
-      `SELECT
-        s.*,
-        json_agg(
-          json_build_object(
-            'id', r.id,
-            'display_name', r.display_name
-          )
-        ) FILTER (WHERE r.id IS NOT NULL) as readers
-       FROM sections s
-       LEFT JOIN section_readers sr ON s.id = sr.section_id
-       LEFT JOIN readers r ON sr.reader_id = r.id
-       WHERE s.audiobook_id = $1
-       GROUP BY s.id
-       ORDER BY s.section_number`,
-      [id]
-    );
+    const [authorsResult, genresResult, translatorsResult, sectionsResult] = await Promise.all([
+      this.pool.query(
+        `SELECT a.* FROM authors a
+         JOIN audiobook_authors aa ON a.id = aa.author_id
+         WHERE aa.audiobook_id = $1`,
+        [id]
+      ),
+      this.pool.query(
+        `SELECT g.* FROM genres g
+         JOIN audiobook_genres ag ON g.id = ag.genre_id
+         WHERE ag.audiobook_id = $1`,
+        [id]
+      ),
+      this.pool.query(
+        `SELECT t.* FROM translators t
+         JOIN audiobook_translators at ON t.id = at.translator_id
+         WHERE at.audiobook_id = $1`,
+        [id]
+      ),
+      this.pool.query(
+        `SELECT
+          s.*,
+          json_agg(
+            json_build_object(
+              'id', r.id,
+              'display_name', r.display_name
+            )
+          ) FILTER (WHERE r.id IS NOT NULL) as readers
+         FROM sections s
+         LEFT JOIN section_readers sr ON s.id = sr.section_id
+         LEFT JOIN readers r ON sr.reader_id = r.id
+         WHERE s.audiobook_id = $1
+         GROUP BY s.id
+         ORDER BY s.section_number`,
+        [id]
+      ),
+    ]);
 
     return {
       ...book,
@@ -112,8 +114,9 @@ export class AudiobookService {
       sections: sectionsResult.rows,
     };
   }
+
   async getLanguageStats() {
-    const result = await pool.query(
+    const result = await this.pool.query(
       'SELECT language, COUNT(*)::int as count FROM audiobooks GROUP BY language ORDER BY count DESC'
     );
     return result.rows;

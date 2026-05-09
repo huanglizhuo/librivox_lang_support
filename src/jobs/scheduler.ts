@@ -1,25 +1,18 @@
 import cron from 'node-cron';
-import { IncrementalSyncJob } from './incrementalSync';
 import { FullSyncJob } from './fullSync';
+import { config } from '../config';
 import logger from '../utils/logger';
 
 export class SyncScheduler {
-  private incrementalSyncJob: IncrementalSyncJob;
   private isRunning = false;
 
-  constructor() {
-    this.incrementalSyncJob = new IncrementalSyncJob();
-  }
-
   start(): void {
-    const cronEnabled = process.env.ENABLE_SYNC_CRON === 'true';
-
-    if (!cronEnabled) {
+    if (!config.sync.cronEnabled) {
       logger.info('Cron scheduler disabled');
       return;
     }
 
-    cron.schedule('0 2 * * *', async () => {
+    cron.schedule(config.sync.cronSchedule, async () => {
       if (this.isRunning) {
         logger.warn('Sync already running, skipping');
         return;
@@ -29,9 +22,7 @@ export class SyncScheduler {
 
       try {
         logger.info('Cron triggered full sync');
-        // Daily full sync to ensure data consistency
-        const fullSyncJob = new FullSyncJob();
-        await fullSyncJob.run();
+        await new FullSyncJob().run();
       } catch (error) {
         logger.error('Cron sync failed', { error });
       } finally {
@@ -39,7 +30,7 @@ export class SyncScheduler {
       }
     });
 
-    logger.info('Cron scheduler started (daily full sync at 2 AM UTC)');
+    logger.info(`Cron scheduler started (schedule: ${config.sync.cronSchedule})`);
   }
 
   stop(): void {

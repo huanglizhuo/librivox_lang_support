@@ -1,29 +1,14 @@
-import { BaseModel } from './BaseModel';
-import { LibriVoxAuthor, parseLibriVoxId } from '../types/librivox.types';
 import { PoolClient } from 'pg';
+import { LibriVoxAuthor, parseLibriVoxId } from '../types/librivox.types';
+import { batchUpsert } from './utils/batchUpsert';
 
-export class Author extends BaseModel {
-  static async upsertBatch(
-    authors: LibriVoxAuthor[],
-    client: PoolClient
-  ): Promise<void> {
-    if (!authors || authors.length === 0) return;
-
-    for (const author of authors) {
-      const id = parseLibriVoxId(author.id);
-      if (!id) continue;
-
-      await this.queryWithClient(
-        client,
-        `INSERT INTO authors (id, first_name, last_name, dob, dod)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (id) DO UPDATE SET
-           first_name = EXCLUDED.first_name,
-           last_name = EXCLUDED.last_name,
-           dob = EXCLUDED.dob,
-           dod = EXCLUDED.dod`,
-        [id, author.first_name, author.last_name, author.dob, author.dod]
-      );
-    }
+export class Author {
+  static async upsertBatch(authors: LibriVoxAuthor[], client: PoolClient): Promise<void> {
+    await batchUpsert(
+      client, 'authors',
+      authors.filter(a => parseLibriVoxId(a.id) !== null),
+      ['id', 'first_name', 'last_name', 'dob', 'dod'],
+      a => [parseLibriVoxId(a.id)!, a.first_name, a.last_name, a.dob, a.dod],
+    );
   }
 }
