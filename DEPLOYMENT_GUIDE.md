@@ -2,6 +2,16 @@
 
 Complete guide for deploying the LibriVox Language Support API to production.
 
+> **Production deployment now lives in the private `sloc-infra` repo.**
+> CI builds the image (`.github/workflows/build-images.yml`) and pushes it to
+> `ghcr.io/huanglizhuo/librivox_lang_support`. The server pulls that pinned image —
+> it does **not** build from source. Ship a new version by pushing a `v*` tag here,
+> then bump `LIBRIVOX_TAG` in `sloc-infra/secrets/prod.env` and run `make deploy`.
+>
+> The `./deploy.sh` flow below (build-on-server + initial full sync) is retained for
+> **standalone / first-time bootstrap** — e.g. seeding a brand-new database. For the
+> existing production DB it is superseded by the sloc-infra restore-from-dump flow.
+
 ## Prerequisites
 
 - Docker 20.10+

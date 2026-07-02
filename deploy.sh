@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# NOTE: Production is deployed from the private `sloc-infra` repo using the
+# GHCR image (ghcr.io/huanglizhuo/librivox_lang_support), which CI builds from
+# .github/workflows/build-images.yml — the server does NOT build from source.
+# This script is retained for standalone / first-time bootstrap (build locally +
+# run migrations + initial full sync to seed a fresh database).
+
 FULL_SYNC_LIMIT=${FULL_SYNC_LIMIT:-0}
 
 if ! command -v docker &> /dev/null; then
