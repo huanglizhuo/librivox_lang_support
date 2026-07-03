@@ -5,6 +5,7 @@ export const config = {
     name: process.env.DB_NAME || 'librivox',
     user: process.env.DB_USER || 'librivox_user',
     password: process.env.DB_PASSWORD || '',
+    ssl: process.env.DB_SSL === 'true',
     maxConnections: 20,
     idleTimeoutMs: 30_000,
     connectionTimeoutMs: 2_000,
