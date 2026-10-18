@@ -1,5 +1,7 @@
 # LibriVox Language Support API
 
+[![OctoCounts](https://api.octocounts.com/badge/huanglizhuo/librivox_lang_support/branch/dev)](https://octocounts.com/?q=https%3A%2F%2Fgithub.com%2Fhuanglizhuo%2Flibrivox_lang_support&ref=dev)
+
 A Node.js/TypeScript service that synchronizes all LibriVox audiobooks to PostgreSQL and provides language-filtered REST APIs.
 
 ## Features
