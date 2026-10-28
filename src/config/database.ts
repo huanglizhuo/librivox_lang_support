@@ -7,7 +7,7 @@ const pool = new Pool({
   database: config.db.name,
   user: config.db.user,
   password: config.db.password,
-  ssl: config.db.ssl ? { rejectUnauthorized: false } : undefined,
+  ssl: config.db.ssl ? { rejectUnauthorized: true } : undefined,
   max: config.db.maxConnections,
   idleTimeoutMillis: config.db.idleTimeoutMs,
   connectionTimeoutMillis: config.db.connectionTimeoutMs,
